@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <!-- 引入样式表 -->
+  <link rel="stylesheet" href="./css/jsmind.css">
+  <style>
+    /* 设置思维导图容器的样式 */
+    #jsmind_container {
+      width: 1000px;
+      height: 800px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 工具栏 -->
+  <div class="toolbar">
+    <!-- 上传文件按钮 -->
+    <input id="file_input_nodearray" class="file_input" type="file"/>
+    <!-- 导入按钮 -->
+    <button onclick="open_nodearray()">打开文件</button><br /><br />
+    <!-- 保存按钮 -->
+    <button onclick="save_nodearray_file()">保存</button>
+    <!-- 下载导图按钮 -->
+    <button onclick="screen_shot()">下载导图</button>
+    <!-- 展开/折叠节点按钮 -->
+    <button onclick="expand_all()">展开全部节点</button>
+    <button onclick="expand_to_level(2)">展开到二级节点</button>
+    <button onclick="expand_to_level(3)">展开到三级节点</button>
+    <button onclick="collapse_all()">隐藏全部节点</button>
+    <!-- 放大/缩小按钮 -->
+    <button id="zoom-in-button" onclick="zoomIn()">放大</button>
+    <button id="zoom-out-button" onclick="zoomOut()">缩小</button>
+  </div>
+  <!-- 思维导图容器 -->
+  <div id="jsmind_container"></div>
+
+  <!-- 引入 JavaScript 文件 -->
+  <script src="./js/jsmind.js"></script>
+  <script src="./js/jsmind.menu.js"></script>
+  <script src="./js/jsmind.draggable.js"></script>
+  <script src="./js/jsmind.screenshot.js"></script>
+  <script>
+    // 初始化思维导图数据
+    const mind = {
+      /* 元数据，定义思维导图的名称、作者、版本等信息 */
+      "meta":{
+        "name":"example",
+        "author":"hizzgdev@163.com",
+        "version":"0.2"
+      },
+      /* 数据格式声明 */
+      "format":"node_array",
+      /* 数据内容 */
+      "data":[
+        {"id":"root", "isroot":true, "topic":"jsMind"}
+      ]
+    }
+
+    // 初始化思维导图
+    let _jm = null
+    function open_empty(){
+      const options = {
+        container: 'jsmind_container', // 容器ID
+        editable: true, // 是否可编辑
+        theme: 'primary', // 主题
+        view: {
+          line_width: 2, // 线条粗细
+          line_color: 'skyblue' // 线条颜色
+        },
+        shortcut: {
+          enable: false // 禁用快捷键
+        },
+        mode: 'side', // 显示模式
+        menuOpts:{  // 菜单配置
+          showMenu: true, // 是否显示右键菜单
+          injectionList: [ // 菜单选项
+            { target: 'edit', text: '编辑节点' },
+            { target: 'delete', text: '删除节点' },
+            { target: 'addChild', text: '添加子节点' },
+            { target: 'addBrother', text: '添加兄弟节点' }
+          ],
+          style: {
+            menuItem:{
+              'line-height': '28px'
+            },
+          }
+        }
+      }
+      _jm = jsMind.show(options, mind)
+    }
+
+    // 打开文件并显示思维导图
+    function open_nodearray(){
+        var file_input = document.getElementById('file_input_nodearray');
+        var files = file_input.files;
+        if(files.length > 0){
+            var file_data = files[0];
+            jsMind.util.file.read(file_data,function(jsmind_data, jsmind_name){
+                var mind = jsMind.util.json.string2json(jsmind_data);
+                if(!!mind){
+                    _jm.show(mind);
+                    reBuild()
+                }else{
+                    prompt_info('can not open this file as mindmap');
+                }
+            });
+        }else{
+            prompt_info('please choose a file first')
+        }
+    }
+
+    // 保存思维导图到文件
+    function save_nodearray_file(){
+        var mind_data = _jm.get_data('node_array');
+        var mind_name = mind_data.meta.name;
+        var mind_str = jsMind.util.json.json2string(mind_data);
+        jsMind.util.file.save(mind_str,'text/jsmind',mind_name+'.jm');
+    }
+
+    // 截图并下载思维导图
+    function screen_shot(){
+      _jm.screenshot.shootDownload();
+    }
+
+    // 展开/折叠节点
+    function expand_all(){
+        _jm.expand_all();
+    }
+
+    function collapse_all(){
+        _jm.collapse_all();
+    }
+
+    // 展开到特定级别
+    function expand_to_level(num){
+        _jm.expand_to_depth(num);
+    }
+
+    // 放大/缩小视图
+    var zoomInButton = document.getElementById("zoom-in-button");
+    var zoomOutButton = document.getElementById("zoom-out-button");
+
+    function zoomIn() {
+        if (_jm.view.zoomIn()) {
+            zoomOutButton.disabled = false;
+        } else {
+            zoomInButton.disabled = true;
+        };
+    };
+
+
+    function zoomOut() {
+        if (_jm.view.zoomOut()) {
+            zoomInButton.disabled = false;
+        } else {
+            zoomOutButton.disabled = true;
+        };
+    };
+
+    // 提示信息
+    function prompt_info(msg){
+      alert(msg)
+    }
+
+    // 改变窗口大小重置画布
+    window.onresize = function () {
+      _jm.resize()
+    }
+
+    // 鼠标滚轮放大缩小
+    function mouseWheel() {
+      const scrollFunc = function (e) {
+        e = e || window.event
+        if (e.wheelDelta) {
+          if (e.wheelDelta > 0) {
+            zoomIn()
+          } else {
+            zoomOut()
+          }
+        } else if (e.detail) {
+          if (e.detail > 0) {
+            zoomIn()
+          } else {
+            zoomOut()
+          }
+        }
+      }
+      if (document.addEventListener) {
+        document.addEventListener('domMouseScroll', scrollFunc, false)
+      }
+      window.onmousewheel = document.onmousewheel = scrollFunc
+    }
+    mouseWheel()
+
+    // 初始化空的思维导图
+    open_empty()
+  </script>
+</body>
+</html>
